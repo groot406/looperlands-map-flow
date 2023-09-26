@@ -9,6 +9,8 @@ import {Flow, FlowService} from './flow';
 import blockDefinitions from '../config/blocks';
 import _ from 'lodash'
 import {Close} from '@vicons/ionicons5';
+import {Json} from '@vicons/carbon'
+import download from 'downloadjs'
 
 const {x, y} = useMouse()
 
@@ -27,6 +29,67 @@ const selectedBlocks = ref([]);
 const testMode = ref(false);
 const testStartBlock = ref(null);
 const activatedBlocks = ref({'all': [], 'out': [], 'true': [], 'false': [], 'error': []})
+
+const triggers = ['trigger1', 'fight_night', 'trigger_door_2'];
+const doors = [ 'door1', 'door2', 'door-to-basement'];
+const mobs = ['rat', 'bat', 'spider', 'goblin', 'orc', 'troll', 'ogre', 'dragon'];
+const npcs = ['npc1', 'npc2', 'npc3', 'npc4', 'npc5', 'npc6', 'npc7', 'npc8', 'npc9', 'npc10'];
+const items = ['flask', 'key1', 'key2', 'wood', 'stone', 'gold', 'sword', 'shield', 'armor', 'potion', 'scroll'];
+const areas = ['location1', 'location2', 'location3', 'location4', 'location5', 'location6', 'location7', 'location8', 'location9', 'location10'];
+const quests = ['quest1', 'quest2', 'quest3', 'quest4', 'quest5', 'quest6', 'quest7', 'quest8', 'quest9', 'quest10'];
+const layers = ['layer1', 'layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8', 'layer9', 'layer10'];
+const music = ['music1', 'music2', 'music3', 'music4', 'music5', 'music6', 'music7', 'music8', 'music9', 'music10'];
+const sounds = ['sound1', 'sound2', 'sound3', 'sound4', 'sound5', 'sound6', 'sound7', 'sound8', 'sound9', 'sound10'];
+const animations = ['walk_left', 'walk_right', 'walk_up', 'walk_down', 'idle_left', 'idle_right', 'idle_up', 'idle_down', 'attack_left', 'attack_right', 'attack_up', 'attack_down', 'die_left', 'die_right', 'die_up', 'die_down', 'special_left', 'special_right', 'special_up', 'special_down'];
+
+const subTags = {
+  player: {
+    name: 'string',
+  },
+  mob: {
+    kind: 'string',
+    name: 'string'
+  },
+  npc: {
+    kind: 'string',
+    name: 'string'
+  },
+  item: {
+    kind: 'string',
+    name: 'string'
+  },
+  area: {
+    topLeft: 'coordinate',
+    bottomRight:'coordinate',
+    name: 'string'
+  },
+  quest: {
+    name: { type: 'string' },
+    description: {type: 'string'},
+    target: {type: 'string'},
+    total: {type: 'integer'},
+    done: {type: 'integer'},
+    remaining: {type: 'integer'},
+    status: {type:'string'},
+    open: {type:'boolean'},
+    completed: {type:'boolean'},
+  },
+  layer: {
+    name: 'string'
+  },
+}
+
+provide('doors', doors);
+provide('mobs', mobs);
+provide('npcs', npcs);
+provide('items', items);
+provide('areas', areas);
+provide('quests', quests);
+provide('layers', layers);
+provide('music', music);
+provide('sounds', sounds);
+provide('animations', animations);
+provide('triggers', triggers);
 
 onMounted(initialize);
 
@@ -356,7 +419,6 @@ const dragSelectStyle = computed(() => {
 const currentState = ref({});
 const states = ref({})
 const hasUndoState = computed(() => {
-  console.log(currentState.value[activeTab.value]);
   return (currentState.value[activeTab.value]) > 0;
 })
 
@@ -621,6 +683,72 @@ watch(activeTab, () => {
   initialize()
 })
 
+function downloadJson() {
+  const json = { handlers: []};
+  const allBlocksJson = localStorage.getItem('blocks');
+  const allLinesJson = localStorage.getItem('lines');
+
+  const allBlocks = JSON.parse(allBlocksJson);
+  const allLines = JSON.parse(allLinesJson)
+  _.forEach(allBlocks, (tabBlocks) => {
+    _.forEach(tabBlocks, (block, idx) => {
+      if (block.group != 'when') {
+        return;
+      }
+
+      let event = {
+        idx: idx,
+        type: block.block,
+        options: block.variables
+      };
+
+      let outputs = getOutputs(block, idx, allLines, allBlocks);
+      _.forEach(outputs, (output, outputType) => {
+        event[outputType] = output
+      });
+
+      json.handlers.push(event);
+    });
+  })
+
+  download(JSON.stringify(json, null, 2), "mapflow.json", "text/plain");
+}
+
+function getOutputs(block, idx, allLines, allBlocks) {
+  let outputs = {};
+
+  _.forEach(allLines, (tabLines, tab) => {
+    _.forEach(tabLines, (line) => {
+      if(line[0] === idx) {
+        let outputType = line[2];
+        if(outputType === '') {
+          outputType = 'then';
+        }
+
+        // console.log(line);
+
+        if(!outputs[outputType]) {
+          outputs[outputType] = [];
+        }
+
+        let outputBlock = allBlocks[tab][line[1]];
+        let outputJson = {
+          idx: line[1],
+          type: outputBlock.block,
+          options: outputBlock.variables
+        };
+        let blockOutputs = getOutputs(outputBlock, line[1], allLines, allBlocks);
+        _.forEach(blockOutputs, (output, outputType) => {
+          outputJson[outputType] = output
+        });
+
+        outputs[outputType].push(outputJson)
+      }
+    })
+  })
+  return outputs;
+}
+
 provide('isCreatingNewLine', isCreatingNewLine)
 provide('snappedBlock', snappedBlock)
 provide('newLine', newLine)
@@ -636,38 +764,44 @@ provide('testIsFinished', testIsFinished)
   <div id="worksheet" class="flex flex-col w-full h-screen bg-slate-100 fixed" @mousedown="startDragSelect">
     <div v-if="dragSelect" class="bg-blue-500 opacity-10 absolute" :style="dragSelectStyle"></div>
     <div class="text-white bg-slate-800 shadow-xl select-none items-center" id="worksheet">
-      <div class="flex flex-row items-center select-none">
-        <img src="./assets/looperlandlogo.png" class="h-[100px] mx-4"/>
-        <h1 class="p-4 text-2xl font-header font-thin">LooperLands Map Flow</h1>
-        <div class="ml-10 flex flex-row gap-x-4">
-          <n-dropdown
-              :options="blockOptions"
-              placement="bottom-start"
-              trigger="hover"
-              @select="addBlock"
-          >
-            <n-button class="text-white">Add +</n-button>
-          </n-dropdown>
-          <Icon size="36">
-            <UndoFilled
-                :class="{'text-slate-600': !hasUndoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasUndoState }"
-                @click="undo"
-            ></UndoFilled>
+      <div class="flex flex-row items-center select-none justify-between">
+        <div class="flex flex-row items-center gap-x-2">
+          <img src="./assets/looperlandlogo.png" class="h-[100px] mx-4"/>
+          <h1 class="p-4 text-2xl font-header font-thin">LooperLands Map Flow</h1>
+          <div class="ml-10 flex flex-row gap-x-4">
+            <n-dropdown
+                :options="blockOptions"
+                placement="bottom-start"
+                trigger="hover"
+                @select="addBlock"
+            >
+              <n-button class="text-white">Add +</n-button>
+            </n-dropdown>
+            <Icon size="36">
+              <UndoFilled
+                  :class="{'text-slate-600': !hasUndoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasUndoState }"
+                  @click="undo"
+              ></UndoFilled>
+            </Icon>
+            <Icon size="36">
+              <RedoFilled
+                  :class="{'text-slate-600': !hasRedoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasRedoState }"
+                  @click="(hasRedoState) ? redo() : ''"
+              ></RedoFilled>
+            </Icon>
+          </div>
+        </div>
+        <div class="mr-10">
+          <Icon size="36" class="hover:bg-slate-600 cursor-pointer" @click="downloadJson">
+            <Json />
           </Icon>
-          <Icon size="36">
-            <RedoFilled
-                :class="{'text-slate-600': !hasRedoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasRedoState }"
-                @click="(hasRedoState) ? redo() : ''"
-            ></RedoFilled>
-          </Icon>
-
         </div>
       </div>
     </div>
     <div class="bg-slate-400 w-1/1 overflow-y-hidden overflow-x-auto flex flex-row gap-x-1 select-none">
       <div @click="clickTab(tab, tabIdx)"
-           class="cursor-pointer flex flex-row items-center gap-x-2 pr-4 mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max hover:bg-slate-50 select-none"
-           :class="{'bg-slate-100' : tab === activeTab,  'bg-slate-300': tab!== activeTab }"
+           class="cursor-pointer flex flex-row items-center gap-x-2 pr-4 mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max select-none"
+           :class="{'bg-slate-100' : tab === activeTab,  'bg-slate-300 hover:bg-slate-200': tab!== activeTab }"
            v-for="(tab, tabIdx) in tabs">
         <div v-if="editTab !== tabIdx">{{ tab }}</div>
         <n-input class="text-xs" size="small" v-else v-model:value="tabs[tabIdx]" @keydown.enter="renameTab"/>
@@ -676,7 +810,7 @@ provide('testIsFinished', testIsFinished)
         </n-icon>
       </div>
       <div
-          class="cursor-pointer mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max bg-slate-300 hover:bg-slate-50"
+          class="cursor-pointer mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max bg-slate-300 hover:bg-slate-200"
           @click="addTab">+
       </div>
     </div>

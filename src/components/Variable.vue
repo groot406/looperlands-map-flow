@@ -35,9 +35,10 @@
     <teleport to="body">
       <div class="absolute popcontainer z-50" :style="popPosition">
         <div ref='popover' class="relative shadow-md popover bg-slate-50 p-4 rounded-md w-60">
-          <input v-if="settings.type !== 'tag'" v-model="input" @input="handelInput"
+          <input v-if="!settings.tagType && settings.type !== 'coordinate'" v-model="input" @input="handelInput"
                  :placeholder="name"
-                 class="font-normal ring-1 outline-0 ring-blue-300 focus:ring-blue-600 bg-white text-xs text-slate-800 bg-slate-100 border-1 w-full border-slate-600 rounded p-1 px-2">
+                 class="font-normal ring-1 outline-0 ring-blue-300 focus:ring-blue-600 bg-white text-xs text-slate-800 border-1 w-full border-slate-600 rounded p-1 px-2">
+          <div class="flex flex-row" v-if="settings.type === 'coordinate'"><input v-model="input" @input="handelInput"  placeholder="x,y"/></div>
           <n-popover v-if="settings.type !== 'tag'" trigger="click" placement="bottom">
             <template #trigger>
               <Icon size="16" class="absolute right-5 top-5 cursor-pointer">
@@ -50,14 +51,15 @@
               </template>
             </div>
           </n-popover>
-          <select v-if="settings.type === 'tag'" v-model="input" @change="handleSelect"
+          <select v-if="settings.tagType" v-model="input" @change="handleSelect"
                   class="w-full border font-light text-xs p-1">
-            <option value="">- select a tag -</option>
+            <option disabled value="">- select a tag -</option>
             <template v-for="tag in tags">
               <option v-if="(tag.type === settings.tagType) || (settings.tagType === 'mixed')" :value="tag.tag">
-                {{ tag.tag }}
+                Tag: {{ tag.tag }}
               </option>
             </template>
+            <option v-for="tagTypeOption in getTagTypeOptions(settings.tagType)" :value="tagTypeOption">{{tagTypeOption}}</option>
           </select>
           <div class="absolute triangle -top-2 bg-slate-50 w-4 h-4 rotate-45"></div>
         </div>
@@ -66,10 +68,11 @@
   </template>
 </template>
 <script setup>
-import {computed, nextTick, ref} from 'vue'
+import {computed, nextTick, ref, inject} from 'vue'
 import {onClickOutside} from '@vueuse/core'
 import {IosPricetag} from "@vicons/ionicons4"
 import {NPopover} from 'naive-ui'
+
 
 const props = defineProps(['name', 'modelValue', 'settings', 'tags'])
 const emit = defineEmits(['update:modelValue', 'updated'])
@@ -174,6 +177,46 @@ const template = computed(() => {
 })
 
 const popPosition = ref({})
+
+const mobs = inject('mobs');
+const npcs = inject('npcs');
+const items = inject('items');
+const quests = inject('quests');
+const areas = inject('areas');
+const triggers = inject('triggers');
+const music = inject('music');
+const sounds = inject('sounds');
+const layers = inject('layers');
+const doors = inject('doors');
+const animations = inject('animations');
+
+function getTagTypeOptions(tagType) {
+  console.log(mobs)
+  switch (tagType) {
+    case 'mob':
+      return mobs
+    case 'npc':
+      return npcs
+    case 'item':
+      return items
+    case 'quest':
+      return quests
+    case 'area':
+      return areas
+    case 'trigger':
+      return triggers
+    case 'music':
+      return music
+    case 'sound':
+      return sounds
+    case 'layer':
+      return layers
+    case 'door':
+      return doors
+    case 'animation':
+      return animations
+  }
+}
 </script>
 <style lang="scss">
 

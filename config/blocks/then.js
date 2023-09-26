@@ -8,7 +8,6 @@ const blocks = {
         throwsError: false,
         variables: {
             message: {type: 'string'},
-            player: {tagType: 'player'}
         },
         render: (variables) => {
             return 'Send notification: {message}'
@@ -192,10 +191,10 @@ const blocks = {
         category: 'sound',
         throwsError: true,
         variables: {
-            music: { tagType: 'music' },
+            sound: { tagType: 'sound' },
         },
         render: (variables) => {
-            return 'Play sound: {music}'
+            return 'Play sound: {sound}'
         }
     },
 
@@ -206,10 +205,10 @@ const blocks = {
         category: 'sound',
         throwsError: true,
         variables: {
-            music: { tagType: 'music' },
+            sound: { tagType: 'sound' },
         },
         render: (variables) => {
-            return 'Stop sound: {music}'
+            return 'Stop sound: {sound}'
         }
     },
 
@@ -332,7 +331,7 @@ const blocks = {
         throwsError: false,
         variables: {
             item: { tagType: 'item' },
-            amount: { type: 'number' },
+            amount: { type: 'integer' },
         },
         render: (variables) => {
             return 'Add {amount}x{item} to inventory'
@@ -347,7 +346,7 @@ const blocks = {
         throwsError: true,
         variables: {
             item: { tagType: 'item' },
-            amount: { type: 'number' },
+            amount: { type: 'integer' },
         },
         render: (variables) => {
             return 'Remove {amount}x{item} from inventory'
