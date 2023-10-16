@@ -14,23 +14,9 @@ const blocks = {
         }
     },
 
-    'talk.player': {
-        type: 'then',
-        description: 'Let player say something',
-        icon: 'ChatBubbleOutlineFilled',
-        category: 'chat',
-        throwsError: false,
-        variables: {
-            message: {type: 'string'},
-        },
-        render: (variables) => {
-            return 'Player says: {message}'
-        }
-    },
-
     'walk.player': {
         type: 'then',
-        description: 'Let player walk to a position',
+        description: 'Let Player walk to a position',
         icon: 'DirectionsRunFilled',
         category: 'walk',
         throwsError: false,
@@ -38,7 +24,22 @@ const blocks = {
             position: {type: 'coordinate'},
         },
         render: (variables) => {
-            return 'Player walks to: {position}'
+            return 'player walks to: {position}'
+        }
+    },
+
+    'walk.mob': {
+        type: 'then',
+        description: 'Let MOB walk to a position',
+        icon: 'DirectionsRunFilled',
+        category: 'walk',
+        throwsError: false,
+        variables: {
+            mob: { tagType: 'mob'},
+            position: {type: 'coordinate'},
+        },
+        render: (variables) => {
+            return '{mob} walks to: {position}'
         }
     },
 
@@ -71,21 +72,6 @@ const blocks = {
         }
     },
 
-    'teleport.npc': {
-        type: 'then',
-        description: 'Teleport NPC to a position',
-        icon: 'PersonPinCircleFilled',
-        category: 'walk',
-        throwsError: false,
-        variables: {
-            npc: { tagType: 'npc'},
-            position: {type: 'coordinate'},
-        },
-        render: (variables) => {
-            return 'Teleport NPC to: {position}'
-        }
-    },
-
     'spawn.mob': {
         type: 'then',
         description: 'Spawn a mob',
@@ -96,8 +82,29 @@ const blocks = {
             mob: { tagType: 'mob'},
             position: {type: 'coordinate'},
         },
+        tags: {
+            spawned: {tag: 'spawned', type: 'mob'},
+        },
         render: (variables) => {
             return 'Spawn {mob} at {position}'
+        }
+    },
+
+    'spawn.npc': {
+        type: 'then',
+        description: 'Spawn a NPC',
+        icon: 'PestControlRodentFilled',
+        category: 'spawn',
+        throwsError: false,
+        variables: {
+            npc: { tagType: 'npc'},
+            position: {type: 'coordinate'},
+        },
+        tags: {
+            spawned: {tag: 'spawned', type: 'npc'},
+        },
+        render: (variables) => {
+            return 'Spawn {npc} at {position}'
         }
     },
 
@@ -110,6 +117,9 @@ const blocks = {
         variables: {
             item: { tagType: 'item'},
             position: {type: 'coordinate'},
+        },
+        tags: {
+            spawned: {tag: 'spawned', type: 'item'},
         },
         render: (variables) => {
             return 'Spawn {item} at {position}'
@@ -142,6 +152,33 @@ const blocks = {
             return 'Show tile layer {layer}'
         }
     },
+    'layer.toggle': {
+        type: 'then',
+        description: 'Toggle tile layer',
+        icon: 'RemoveRedEyeFilled',
+        category: 'layer',
+        throwsError: false,
+        variables: {
+            layer: { tagType: 'layer'},
+        },
+        render: (variables) => {
+            return 'Toggle tile layer {layer}'
+        }
+    },
+
+    'talk.player': {
+        type: 'then',
+        description: 'Let player say something',
+        icon: 'ChatBubbleOutlineFilled',
+        category: 'chat',
+        throwsError: false,
+        variables: {
+            message: {type: 'string'},
+        },
+        render: (variables) => {
+            return 'Player says: {message}'
+        }
+    },
 
     'talk.npc': {
         type: 'then',
@@ -158,9 +195,68 @@ const blocks = {
         }
     },
 
-    'camera.focus.npc': {
+    'talk.mob': {
         type: 'then',
-        description: 'Camera focus on NPC',
+        description: 'Let MOB say something',
+        icon: 'ChatBubbleOutlineFilled',
+        category: 'chat',
+        throwsError: false,
+        variables: {
+            mob: { tagType: 'mob' },
+            message: {type: 'string'},
+        },
+        render: (variables) => {
+            return '{mob} says: {message}'
+        }
+    },
+
+    'talk.player.private': {
+        type: 'then',
+        description: 'Let player say something (only player can see)',
+        icon: 'ChatBubbleOutlineFilled',
+        category: 'chat',
+        throwsError: false,
+        variables: {
+            message: {type: 'string'},
+        },
+        render: (variables) => {
+            return 'Player says: {message}'
+        }
+    },
+
+    'talk.npc.private': {
+        type: 'then',
+        description: 'Let NPC say something (only player can see)',
+        icon: 'ChatBubbleOutlineFilled',
+        category: 'chat',
+        throwsError: false,
+        variables: {
+            npc: { tagType: 'npc' },
+            message: {type: 'string'},
+        },
+        render: (variables) => {
+            return '{npc} says: {message}'
+        }
+    },
+
+    'talk.mob.private': {
+        type: 'then',
+        description: 'Let MOB say something (only player can see)',
+        icon: 'ChatBubbleOutlineFilled',
+        category: 'chat',
+        throwsError: false,
+        variables: {
+            mob: { tagType: 'mob' },
+            message: {type: 'string'},
+        },
+        render: (variables) => {
+            return '{mob} says: {message}'
+        }
+    },
+
+    'camera.npc': {
+        type: 'then',
+        description: 'Camera focus on NPC ',
         icon: 'VideoCameraFrontOutlined',
         category: 'camera',
         throwsError: false,
@@ -171,7 +267,7 @@ const blocks = {
             return 'Focus camera on {npc}'
         }
     },
-    'camera.focus.player': {
+    'camera.player': {
         type: 'then',
         description: 'Camera focus on Player',
         icon: 'VideoCameraFrontOutlined',
@@ -198,20 +294,6 @@ const blocks = {
         }
     },
 
-    'sound.stop': {
-        type: 'then',
-        description: 'Stop sound',
-        icon: 'MusicOffFilled',
-        category: 'sound',
-        throwsError: true,
-        variables: {
-            sound: { tagType: 'sound' },
-        },
-        render: (variables) => {
-            return 'Stop sound: {sound}'
-        }
-    },
-
     'music.play': {
         type: 'then',
         description: 'Play music',
@@ -223,19 +305,6 @@ const blocks = {
         },
         render: (variables) => {
             return 'Start music: {music}'
-        }
-    },
-    'music.stop': {
-        type: 'then',
-        description: 'Stop music',
-        icon: 'MusicOffFilled',
-        category: 'sound',
-        throwsError: true,
-        variables: {
-            music: { tagType: 'music' },
-        },
-        render: (variables) => {
-            return 'Stop music: {music}'
         }
     },
 
@@ -267,6 +336,20 @@ const blocks = {
         }
     },
 
+    'trigger.toggle': {
+        type: 'then',
+        description: 'Toggle trigger',
+        icon: 'FlourescentFilled',
+        category: 'trigger',
+        throwsError: true,
+        variables: {
+            trigger: { tagType: 'trigger' },
+        },
+        render: (variables) => {
+            return 'Toggle trigger: {trigger}'
+        }
+    },
+
     'quest.new': {
         type: 'then',
         description: 'Give quest',
@@ -292,34 +375,6 @@ const blocks = {
         },
         render: (variables) => {
             return 'Complete a quest: {quest}'
-        }
-    },
-
-    'door.unlock': {
-        type: 'then',
-        description: 'Unlock door',
-        icon: 'DoorBackOutlined',
-        category: 'door',
-        throwsError: true,
-        variables: {
-            door: { tagType: 'door' },
-        },
-        render: (variables) => {
-            return 'Unlock door: {door}'
-        }
-    },
-
-    'door.lock': {
-        type: 'then',
-        description: 'Lock door',
-        icon: 'DoorBackRound',
-        category: 'door',
-        throwsError: true,
-        variables: {
-            door: { tagType: 'door' },
-        },
-        render: (variables) => {
-            return 'Lock door: {door}'
         }
     },
 

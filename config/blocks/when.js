@@ -51,7 +51,7 @@ const blocks = {
         render: () => 'Player looted {item}'
     },
 
-    'player.entered_area': {
+    'area.entered': {
         type: 'when',
         description: 'Player entered an area',
         icon: 'PinDropOutlined',
@@ -66,7 +66,7 @@ const blocks = {
         render: () => 'Player entered {area} area'
     },
 
-    'player.left_area': {
+    'area.left': {
         type: 'when',
         description: 'Player left an area',
         icon: 'PinDropOutlined',
@@ -81,7 +81,7 @@ const blocks = {
         render: () => 'Player left {area} area'
     },
 
-    'npc.conversation': {
+    'npc.talked': {
         type: 'when',
         description: 'NPC Talked',
         icon: 'ChatFilled',
@@ -124,19 +124,6 @@ const blocks = {
         category: 'trigger',
         render: () => 'Trigger {trigger} deactivated'
     },
-    'quest.received': {
-        type: 'when',
-        description: 'Quest received',
-        icon: 'TaskOutlined',
-        tags: {
-            quest: {tag: 'quest', type: 'quest'},
-        },
-        variables: {
-            quest: { tagType: 'quest'},
-        },
-        category: 'quest',
-        render: () => 'Quest {quest} received'
-    },
 
     'quest.completed': {
         type: 'when',
@@ -144,6 +131,7 @@ const blocks = {
         icon: 'TaskFilled',
         tags: {
             quest: {tag: 'quest', type: 'quest'},
+            xp: {tag: 'xp', type: 'integer'},
         },
         variables: {
             quest: { tagType: 'quest'},

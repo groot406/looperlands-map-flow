@@ -55,7 +55,7 @@
                   class="w-full border font-light text-xs p-1">
             <option disabled value="">- select a tag -</option>
             <template v-for="tag in tags">
-              <option v-if="(tag.type === settings.tagType) || (settings.tagType === 'mixed')" :value="tag.tag">
+              <option v-if="(tag.type === settings.tagType) || (settings.tagType === 'mixed')" :value="'tag:' + tag.tag">
                 Tag: {{ tag.tag }}
               </option>
             </template>

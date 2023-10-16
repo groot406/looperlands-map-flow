@@ -114,10 +114,7 @@ const blockOptions = computed(() => {
   })
 
   options.push({
-    label: 'Then', key: 'then', children: _.map(blockDefinitions.then, (block, key) => {
-      block.group = 'then';
-      return {label: block.description, key: key, block: block}
-    })
+    label: 'Then', key: 'then', children: getGroupedThenBlocks()
   })
 
   options.push({
@@ -129,6 +126,24 @@ const blockOptions = computed(() => {
 
   return options;
 })
+
+function getGroupedThenBlocks() {
+  let blocks = _.map(blockDefinitions.then, (block, key) => {
+    block.group = 'then';
+    return {label: block.description, key: key, block: block}
+  })
+
+  let groupedBlocks = _.groupBy(blocks, (block) => {
+    return block.block.category
+  })
+
+  let groupedBlocksArray = [];
+  for (let i in groupedBlocks) {
+    groupedBlocksArray.push({label: _.upperFirst(i), key:i,  children: groupedBlocks[i]})
+  }
+
+  return groupedBlocksArray;
+}
 
 function parseBlockTemplate(group: string, block: string, variables: object) {
   let definition = blockDefinitions[group][block];
@@ -689,6 +704,8 @@ function downloadJson() {
   const allLinesJson = localStorage.getItem('lines');
 
   const allBlocks = JSON.parse(allBlocksJson);
+  console.log(allBlocks);
+
   const allLines = JSON.parse(allLinesJson)
   _.forEach(allBlocks, (tabBlocks) => {
     _.forEach(tabBlocks, (block, idx) => {
