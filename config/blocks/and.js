@@ -4,8 +4,7 @@ const blocks = {
         description: 'Killed mob',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             mob: { tagType: 'mob'},
             amount: { type: 'integer' },
@@ -20,8 +19,7 @@ const blocks = {
         description: 'Looted item',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             item: { tagType: 'item'},
             amount: { type: 'integer' },
@@ -36,8 +34,7 @@ const blocks = {
         description: 'Has quest received',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             quest: { tagType: 'quest'},
         },
@@ -51,8 +48,7 @@ const blocks = {
         description: 'Has quest completed',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             quest: { tagType: 'quest'},
         },
@@ -66,8 +62,7 @@ const blocks = {
         description: 'Player has level',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             level: { type: 'integer'},
         },
@@ -81,8 +76,7 @@ const blocks = {
         description: 'Player is in area',
         icon: 'CheckRound',
         category: 'field',
-        tags: {
-        },
+        tags: {},
         variables: {
             top_left: { type: 'coordinate'},
             bottom_right: { type: 'coordinate'},
@@ -92,60 +86,17 @@ const blocks = {
         }
     },
 
-    'tag.contains': {
+    'has.trigger.active': {
         type: 'and',
-        description: 'Tag contains text',
+        description: 'Trigger is active',
         icon: 'CheckRound',
         category: 'field',
+        tags: {},
         variables: {
-            field: {
-                type: 'tag',
-                tagType: 'text'
-            },
-            value: {
-                type: 'text'
-            }
+            trigger: { tagType: 'trigger'},
         },
         render: (variables) => {
-            return '{field} contains {value}'
-        }
-    },
-
-    'number.greater.than': {
-        type: 'and',
-        description: 'Number is greater than',
-        icon: 'CheckRound',
-        category: 'field',
-        variables: {
-            number: {
-                type: 'tag',
-                tagType: 'number'
-            },
-            value: {
-                type: 'number'
-            }
-        },
-        render: (variables) => {
-            return '{number} is greater than {value}'
-        }
-    },
-
-    'and.number.less.than': {
-        type: 'and',
-        description: 'Number is less than',
-        icon: 'CheckRound',
-        category: 'field',
-        variables: {
-            number: {
-                type: 'tag',
-                tagType: 'number'
-            },
-            value: {
-                type: 'number'
-            }
-        },
-        render: (variables) => {
-            return '{number} is less than {value}'
+            return 'Trigger {trigger} is active'
         }
     }
 }
