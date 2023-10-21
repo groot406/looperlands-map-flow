@@ -1,16 +1,179 @@
+<template>
+  <div id="worksheet" class="flex flex-col w-full h-screen bg-slate-100 fixed" @mousedown="startDragSelect">
+    <div v-if="dragSelect" class="bg-blue-500 opacity-10 absolute" :style="dragSelectStyle"></div>
+    <div class="text-white bg-slate-800 shadow-xl select-none items-center" id="worksheet">
+      <div class="flex flex-row items-center select-none justify-between">
+        <div class="flex flex-row items-center gap-x-2">
+          <img src="./assets/looperlandlogo.png" class="h-[100px] mx-4"/>
+          <h1 class="p-4 text-2xl font-header font-thin">LooperLands Map Flow</h1>
+          <div class="ml-10 flex flex-row gap-x-4">
+            <n-dropdown
+                :options="blockOptions"
+                placement="bottom-start"
+                trigger="hover"
+                @select="addBlock"
+            >
+              <n-button class="text-white">Add +</n-button>
+            </n-dropdown>
+            <Icon size="36">
+              <UndoFilled
+                  :class="{'text-slate-600': !hasUndoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasUndoState }"
+                  @click="undo"
+              ></UndoFilled>
+            </Icon>
+            <Icon size="36">
+              <RedoFilled
+                  :class="{'text-slate-600': !hasRedoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasRedoState }"
+                  @click="(hasRedoState) ? redo() : ''"
+              ></RedoFilled>
+            </Icon>
+          </div>
+        </div>
+
+        <div class="mr-10 flex flex-row items-center">
+          <div :class="{ 'animate-spin': isSyncing}" class="flex text-lg mx-10 cursor-pointer items-center justify-center" @click="sync">
+            <n-tooltip>
+              <template #trigger>
+                <n-icon size="32"><SyncRound /></n-icon>
+              </template>
+              Re-sync game assets
+            </n-tooltip>
+          </div>
+          <div class="mr-10 text-lg text-slate-200 hover:text-white cursor-pointer" @click="showSetup">
+            <n-tooltip>
+              <template #trigger>
+                <n-icon size="32"><DisplaySettingsOutlined /></n-icon>
+              </template>
+              Update map-settings
+            </n-tooltip>
+          </div>
+          <div class="mr-10 text-lg text-slate-200 hover:text-white cursor-pointer" @click="publishJson">
+            <n-tooltip>
+              <template #trigger>
+                <n-icon size="32"><PublishFilled /></n-icon>
+              </template>
+              Publish flow to game
+            </n-tooltip>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bg-slate-400 w-1/1 overflow-y-hidden overflow-x-auto flex flex-row gap-x-1 select-none">
+      <div @click="clickTab(tab, tabIdx)"
+           class="cursor-pointer flex flex-row items-center gap-x-2 pr-4 mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max select-none"
+           :class="{'bg-slate-100' : tab === activeTab,  'bg-slate-300 hover:bg-slate-200': tab!== activeTab }"
+           v-for="(tab, tabIdx) in tabs">
+        <div v-if="editTab !== tabIdx">{{ tab }}</div>
+        <n-input class="text-xs" size="small" v-else v-model:value="tabs[tabIdx]" @keydown.enter="renameTab"/>
+        <n-icon v-if="editTab!== tabIdx" @click.stop="removeTab(tabIdx)" class="opacity-50 hover:opacity-100">
+          <Close/>
+        </n-icon>
+      </div>
+      <div
+          class="cursor-pointer mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max bg-slate-300 hover:bg-slate-200"
+          @click="addTab">+
+      </div>
+    </div>
+    <div class="overflow-auto w-1/1 select-none">
+      <div id="lines" class="lines absolute top-0">
+        <Line v-for="(line, idx) in lines"
+              :key="line[0] + '_' + line[1] + '_' + line[2]"
+              :idx="idx"
+              :from="blocks[line[0]] ? blocks[line[0]].position : {}" :fromIdx="line[0]"
+              :to="blocks[line[1]] ? blocks[line[1]].position : {}" :toIdx="line[1]"
+              :connector="line[2]"
+              :enter="line[3] !== true"
+              :disconnected="lineIsDisconnected(idx)"
+              @removed="removeLine"
+        />
+      </div>
+
+      <template v-for="(block, idx) in blocks">
+        <Block :idx="idx"
+               :key="idx"
+               v-if="blockDefinitions[block.group][block.block]"
+               :icon="blockDefinitions[block.group][block.block].icon"
+               :type="blockDefinitions[block.group][block.block].type"
+               :category="blockDefinitions[block.group][block.block].category"
+               :tags="blockDefinitions[block.group][block.block].tags"
+               :throws-error="blockDefinitions[block.group][block.block].throwsError"
+               :lines="lines"
+               :disconnected="blockIsDisconnected(idx)"
+               :block="block"
+               @moved="moveBlocks"
+               @newLine="createNewLine"
+               @remove="removeBlock"
+               @start="startTestMode"
+               @stop="exitTestMode"
+        >
+
+          <div class="flex flex-row py-1 gap-x-0.5">
+            <template v-for="part in parseBlockTemplate(block.group, block.block, block.variables)">
+              <div class="text-xs py-0.5 font-light border border-transparent" v-if="part.type === 'string'"
+                   v-html="part.text"/>
+              <variable v-if="part.type === 'variable'"
+                        :name="part.text"
+                        v-model="block.variables[part.text]"
+                        :tags="getTagsForBlock(block, idx)"
+                        :settings="blockDefinitions[block.group][block.block].variables ? (blockDefinitions[block.group][block.block].variables[part.text] ?? {}) : {}"
+                        @updated="() => { saveBlocks(); addState(); }"
+                        @update:modelValue="redrawLines"/>
+            </template>
+          </div>
+        </Block>
+      </template>
+    </div>
+  </div>
+  <div
+      class="shadow-md text-slate-400 absolute bottom-4 rounded-full bg-white py-3 left-[calc(50%-100px)] w-60 text-center hover:shadow-xl transition-all opacity-90 hover:opacity-100"
+      v-if="testMode">
+    <span class="px-4 border-r border-slate-300">
+      <template v-if="testIsFinished">
+      Test finished
+      </template>
+      <template v-else>
+      Testing...
+      </template>
+    </span>
+    <span v-if="testIsFinished" class="text-blue-400 hover:text-blue-700 px-4 hover:underline cursor-pointer"
+          @click="exitTestMode">Exit</span>
+    <span v-if="!testIsFinished" class="text-red-400 hover:text-red-700 px-4 hover:underline cursor-pointer"
+          @click="exitTestMode">Stop</span>
+  </div>
+
+    <n-modal v-model:show="showSetupModal">
+      <n-card style="width: 600px"
+              title="Setup"
+              :bordered="false"
+              size="huge"
+              role="dialog"
+              aria-modal="true">
+        <n-form-item label="Select your map">
+          <n-select :options="mapOptions" v-model:value="selectedMap"></n-select>
+        </n-form-item>
+        <n-form-item label="Looperlands API-KEY">
+          <n-input v-model:value="apiToken" placeholder="API-KEY" />
+        </n-form-item>
+        <n-button @click="saveConfig" type="primary" class="text-green-700">Save</n-button>
+      </n-card>
+    </n-modal>
+
+</template>
+
+
 <script setup lang="ts">
 import {computed, nextTick, onMounted, provide, ref, toRaw, watch} from 'vue'
 import Block from './components/Block.vue'
 import Line from './components/Line.vue'
 import {useMouse} from '@vueuse/core'
-import {RedoFilled, UndoFilled} from '@vicons/material'
+import {RedoFilled, UndoFilled, SyncRound, DisplaySettingsOutlined, PublishFilled} from '@vicons/material'
 import Variable from "./components/Variable.vue";
 import {Flow, FlowService} from './flow';
 import blockDefinitions from '../config/blocks';
 import _ from 'lodash'
 import {Close} from '@vicons/ionicons5';
-import {Json} from '@vicons/carbon'
-import download from 'downloadjs'
+import axios from 'axios'
 
 const {x, y} = useMouse()
 
@@ -24,23 +187,26 @@ const lines = ref([])
 const isCreatingNewLine = ref(false)
 const snappedBlock = ref(null)
 const newLine = ref(null)
+const apiToken = ref(null)
 
 const selectedBlocks = ref([]);
 const testMode = ref(false);
 const testStartBlock = ref(null);
 const activatedBlocks = ref({'all': [], 'out': [], 'true': [], 'false': [], 'error': []})
 
-const triggers = ['trigger1', 'fight_night', 'trigger_door_2'];
-const doors = [ 'door1', 'door2', 'door-to-basement'];
-const mobs = ['rat', 'bat', 'spider', 'goblin', 'orc', 'troll', 'ogre', 'dragon'];
-const npcs = ['npc1', 'npc2', 'npc3', 'npc4', 'npc5', 'npc6', 'npc7', 'npc8', 'npc9', 'npc10'];
-const items = ['flask', 'key1', 'key2', 'wood', 'stone', 'gold', 'sword', 'shield', 'armor', 'potion', 'scroll'];
-const areas = ['location1', 'location2', 'location3', 'location4', 'location5', 'location6', 'location7', 'location8', 'location9', 'location10'];
-const quests = ['quest1', 'quest2', 'quest3', 'quest4', 'quest5', 'quest6', 'quest7', 'quest8', 'quest9', 'quest10'];
-const layers = ['layer1', 'layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8', 'layer9', 'layer10'];
-const music = ['music1', 'music2', 'music3', 'music4', 'music5', 'music6', 'music7', 'music8', 'music9', 'music10'];
-const sounds = ['sound1', 'sound2', 'sound3', 'sound4', 'sound5', 'sound6', 'sound7', 'sound8', 'sound9', 'sound10'];
-const animations = ['walk_left', 'walk_right', 'walk_up', 'walk_down', 'idle_left', 'idle_right', 'idle_up', 'idle_down', 'attack_left', 'attack_right', 'attack_up', 'attack_down', 'die_left', 'die_right', 'die_up', 'die_down', 'special_left', 'special_right', 'special_up', 'special_down'];
+const maps = ref([]);
+const selectedMap = ref(null);
+
+const triggers = ref([]);
+const mobs = ref({});
+const npcs = ref({});
+const items = ref({});
+const quests = ref({});
+const layers = ref([]);
+const music = ref([]);
+const sounds = ref([]);
+const areas = ref({});
+let animations = ['walk_left', 'walk_right', 'walk_up', 'walk_down', 'idle_left', 'idle_right', 'idle_up', 'idle_down', 'attack_left', 'attack_right', 'attack_up', 'attack_down', 'die_left', 'die_right', 'die_up', 'die_down', 'special_left', 'special_right', 'special_up', 'special_down'];
 
 const subTags = {
   player: {
@@ -79,22 +245,25 @@ const subTags = {
   },
 }
 
-provide('doors', doors);
 provide('mobs', mobs);
 provide('npcs', npcs);
 provide('items', items);
-provide('areas', areas);
 provide('quests', quests);
 provide('layers', layers);
 provide('music', music);
 provide('sounds', sounds);
 provide('animations', animations);
 provide('triggers', triggers);
+provide('areas', areas);
 
 onMounted(initialize);
+onMounted(loadMaps);
 
 window.addEventListener('mouseup', handleMouseUp, false);
 window.addEventListener('mouseup', stopDragSelect, false);
+
+const showSetupModal = ref(true);
+const isSyncing = ref(false);
 
 const blockOptions = computed(() => {
   let options = [];
@@ -187,6 +356,7 @@ function removeLine(lineIdx) {
 }
 
 function initialize() {
+  sync();
   let storedTabs = localStorage.getItem('tabs');
   if (storedTabs) {
     tabs.value = JSON.parse(storedTabs);
@@ -228,6 +398,10 @@ function initialize() {
   } else {
     lines.value = {};
   }
+
+  selectedMap.value = localStorage.getItem('selectedMap');
+  apiToken.value = localStorage.getItem('apiToken');
+
   addState();
 }
 
@@ -698,14 +872,12 @@ watch(activeTab, () => {
   initialize()
 })
 
-function downloadJson() {
+function publishJson() {
   const json = { handlers: []};
   const allBlocksJson = localStorage.getItem('blocks');
   const allLinesJson = localStorage.getItem('lines');
 
   const allBlocks = JSON.parse(allBlocksJson);
-  console.log(allBlocks);
-
   const allLines = JSON.parse(allLinesJson)
   _.forEach(allBlocks, (tabBlocks) => {
     _.forEach(tabBlocks, (block, idx) => {
@@ -727,8 +899,18 @@ function downloadJson() {
       json.handlers.push(event);
     });
   })
+  console.log(json);
+  let flowJson = JSON.stringify(json);
 
-  download(JSON.stringify(json, null, 2), "mapflow.json", "text/plain");
+  axios.post('/api/saveLooperLand_Quest2.php?map=' +  selectedMap.value, flowJson, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-KEY': apiToken.value
+    }
+  }).then((response) => {
+    console.log(response);
+  })
+
 }
 
 function getOutputs(block, idx, allLines, allBlocks) {
@@ -766,6 +948,113 @@ function getOutputs(block, idx, allLines, allBlocks) {
   return outputs;
 }
 
+function showSetup() {
+  showSetupModal.value = true;
+}
+
+function sync() {
+  isSyncing.value = true;
+  processGameTypes();
+}
+
+function processGameTypes() {
+  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/map-flow-poc/shared/js/gametypes.js').then((response) => {
+    let gameTypes = response.data;
+    let Types;
+    eval(gameTypes);
+    // loop over Types.Entities
+    npcs.value = {};
+    for (let i in Types.Entities) {
+      let entity = Types.Entities[i];
+      if (Types.isNpc(entity)) { npcs.value[entity] = i;}
+      if (Types.isMob(entity)) { mobs.value[entity] = i;}
+      if (Types.isObject(entity)) { items.value[entity] = i;}
+    }
+
+    isSyncing.value = false;
+  })
+}
+
+function loadMaps(){
+  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/server/config.json').then((response) => {
+    maps.value = response.data.maps;
+  });
+}
+
+const mapOptions = computed(() => {
+  let options = [];
+  for (let i in maps.value) {
+    options.push({label: maps.value[i], value: maps.value[i]})
+  }
+  options.push({label: 'Temp', value: 'degroottemp'})
+  return options;
+})
+
+function saveConfig() {
+  localStorage.setItem('apiToken', apiToken.value);
+  localStorage.setItem('selectedMap', selectedMap.value);
+  showSetupModal.value = false;
+
+  loadMapDetails();
+}
+
+function loadMapDetails() {
+  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/map-flow-poc/server/maps/world_server_' + selectedMap.value + '.json').then((response) => {
+    let mapDetails = response.data;
+    delete mapDetails.collisions
+
+    let mapTriggers = mapDetails.triggers;
+    triggers.value = [];
+    // Loop over mapTriggers array and add to triggers.value
+    for (let i in mapTriggers) {
+      let trigger = mapTriggers[i];
+      if(trigger.trigger) {
+        triggers.value.push(trigger.trigger)
+      }
+
+      areas.value[String(trigger.id)] = trigger.name ? trigger.name : (trigger.x +','+ trigger.y + " - " + (trigger.x + trigger.w) +"," + (trigger.y + trigger.h) );
+    }
+
+    // Loop over doors and add door.ttid
+    let mapDoors = mapDetails.doors;
+    for (let i in mapDoors) {
+      let door = mapDoors[i];
+      if(door.ttid) {
+        triggers.value.push(door.ttid)
+      }
+    }
+
+    layers.value = [];
+    for(let i in mapDetails.hiddenLayers) {
+      layers.value.push(i);
+    }
+  })
+
+  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/server/js/quests/' + selectedMap.value + '.js').then((response) => {
+    //let mapQuests = JSON.parse(response.data;
+    var result = '[' + response.data.match(/(?<=\[\s+).*?(?=\s+\])/gs) + ']';
+    const Types = { Entities: {}, Medals: {}};
+    result = result.replace(/^medal:.*\W?/gm, '');
+    let mapQuests = eval(result);
+
+    quests.value = {};
+    for (let i in mapQuests) {
+      quests.value[mapQuests[i].id] = mapQuests[i].name
+    }
+  })
+
+  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/client/js/audio.js').then((response) => {
+    let audio = response.data;
+    let musicNames = audio.match(/musicNames.*?\[.*?\].*?/gs);
+    eval(musicNames[0]);
+    music.value = musicNames;
+
+    let soundNames = audio.match(/soundNames.*?\[.*?\].*?/gs);
+    eval(soundNames[0]);
+    sounds.value = soundNames;
+  })
+}
+
 provide('isCreatingNewLine', isCreatingNewLine)
 provide('snappedBlock', snappedBlock)
 provide('newLine', newLine)
@@ -776,125 +1065,3 @@ provide('testStartBlock', testStartBlock);
 provide('activatedBlocks', activatedBlocks);
 provide('testIsFinished', testIsFinished)
 </script>
-
-<template>
-  <div id="worksheet" class="flex flex-col w-full h-screen bg-slate-100 fixed" @mousedown="startDragSelect">
-    <div v-if="dragSelect" class="bg-blue-500 opacity-10 absolute" :style="dragSelectStyle"></div>
-    <div class="text-white bg-slate-800 shadow-xl select-none items-center" id="worksheet">
-      <div class="flex flex-row items-center select-none justify-between">
-        <div class="flex flex-row items-center gap-x-2">
-          <img src="./assets/looperlandlogo.png" class="h-[100px] mx-4"/>
-          <h1 class="p-4 text-2xl font-header font-thin">LooperLands Map Flow</h1>
-          <div class="ml-10 flex flex-row gap-x-4">
-            <n-dropdown
-                :options="blockOptions"
-                placement="bottom-start"
-                trigger="hover"
-                @select="addBlock"
-            >
-              <n-button class="text-white">Add +</n-button>
-            </n-dropdown>
-            <Icon size="36">
-              <UndoFilled
-                  :class="{'text-slate-600': !hasUndoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasUndoState }"
-                  @click="undo"
-              ></UndoFilled>
-            </Icon>
-            <Icon size="36">
-              <RedoFilled
-                  :class="{'text-slate-600': !hasRedoState, 'text-slate-300 hover:text-slate-100 cursor-pointer': hasRedoState }"
-                  @click="(hasRedoState) ? redo() : ''"
-              ></RedoFilled>
-            </Icon>
-          </div>
-        </div>
-        <div class="mr-10">
-          <Icon size="36" class="hover:bg-slate-600 cursor-pointer" @click="downloadJson">
-            <Json />
-          </Icon>
-        </div>
-      </div>
-    </div>
-    <div class="bg-slate-400 w-1/1 overflow-y-hidden overflow-x-auto flex flex-row gap-x-1 select-none">
-      <div @click="clickTab(tab, tabIdx)"
-           class="cursor-pointer flex flex-row items-center gap-x-2 pr-4 mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max select-none"
-           :class="{'bg-slate-100' : tab === activeTab,  'bg-slate-300 hover:bg-slate-200': tab!== activeTab }"
-           v-for="(tab, tabIdx) in tabs">
-        <div v-if="editTab !== tabIdx">{{ tab }}</div>
-        <n-input class="text-xs" size="small" v-else v-model:value="tabs[tabIdx]" @keydown.enter="renameTab"/>
-        <n-icon v-if="editTab!== tabIdx" @click.stop="removeTab(tabIdx)" class="opacity-50 hover:opacity-100">
-          <Close/>
-        </n-icon>
-      </div>
-      <div
-          class="cursor-pointer mt-2 rounded-t-xl shadow-xl border border-b-0 pt-2 pb-1 px-6 w-max bg-slate-300 hover:bg-slate-200"
-          @click="addTab">+
-      </div>
-    </div>
-    <div class="overflow-auto w-1/1 select-none">
-      <div id="lines" class="lines absolute top-0">
-        <Line v-for="(line, idx) in lines"
-              :key="line[0] + '_' + line[1] + '_' + line[2]"
-              :idx="idx"
-              :from="blocks[line[0]] ? blocks[line[0]].position : {}" :fromIdx="line[0]"
-              :to="blocks[line[1]] ? blocks[line[1]].position : {}" :toIdx="line[1]"
-              :connector="line[2]"
-              :enter="line[3] !== true"
-              :disconnected="lineIsDisconnected(idx)"
-              @removed="removeLine"
-        />
-      </div>
-
-      <template v-for="(block, idx) in blocks">
-        <Block :idx="idx"
-               :key="idx"
-               v-if="blockDefinitions[block.group][block.block]"
-               :icon="blockDefinitions[block.group][block.block].icon"
-               :type="blockDefinitions[block.group][block.block].type"
-               :category="blockDefinitions[block.group][block.block].category"
-               :tags="blockDefinitions[block.group][block.block].tags"
-               :throws-error="blockDefinitions[block.group][block.block].throwsError"
-               :lines="lines"
-               :disconnected="blockIsDisconnected(idx)"
-               :block="block"
-               @moved="moveBlocks"
-               @newLine="createNewLine"
-               @remove="removeBlock"
-               @start="startTestMode"
-               @stop="exitTestMode"
-        >
-
-          <div class="flex flex-row py-1 gap-x-0.5">
-            <template v-for="part in parseBlockTemplate(block.group, block.block, block.variables)">
-              <div class="text-xs py-0.5 font-light border border-transparent" v-if="part.type === 'string'"
-                   v-html="part.text"/>
-              <variable v-if="part.type === 'variable'"
-                        :name="part.text"
-                        v-model="block.variables[part.text]"
-                        :tags="getTagsForBlock(block, idx)"
-                        :settings="blockDefinitions[block.group][block.block].variables ? (blockDefinitions[block.group][block.block].variables[part.text] ?? {}) : {}"
-                        @updated="() => { saveBlocks(); addState(); }"
-                        @update:modelValue="redrawLines"/>
-            </template>
-          </div>
-        </Block>
-      </template>
-    </div>
-  </div>
-  <div
-      class="shadow-md text-slate-400 absolute bottom-4 rounded-full bg-white py-3 left-[calc(50%-100px)] w-60 text-center hover:shadow-xl transition-all opacity-90 hover:opacity-100"
-      v-if="testMode">
-    <span class="px-4 border-r border-slate-300">
-      <template v-if="testIsFinished">
-      Test finished
-      </template>
-      <template v-else>
-      Testing...
-      </template>
-    </span>
-    <span v-if="testIsFinished" class="text-blue-400 hover:text-blue-700 px-4 hover:underline cursor-pointer"
-          @click="exitTestMode">Exit</span>
-    <span v-if="!testIsFinished" class="text-red-400 hover:text-red-700 px-4 hover:underline cursor-pointer"
-          @click="exitTestMode">Stop</span>
-  </div>
-</template>

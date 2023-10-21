@@ -125,6 +125,20 @@ const blocks = {
             return 'Spawn {item} at {position}'
         }
     },
+    'despawn.item': {
+        type: 'then',
+        description: 'Despawn an item',
+        icon: 'BackpackFilled',
+        category: 'spawn',
+        throwsError: false,
+        variables: {
+            item: { tagType: 'item'},
+        },
+        tags: {},
+        render: (variables) => {
+            return 'De-Spawn {item}'
+        }
+    },
 
     'layer.hide': {
         type: 'then',

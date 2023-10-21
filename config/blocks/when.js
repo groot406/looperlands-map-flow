@@ -16,6 +16,7 @@ const blocks = {
         icon: 'PersonOffFilled',
         tags: {
             player: {tag: 'player', type: 'player'},
+            position: { tag:"position", type:"coordinate"},
         },
         category: 'player',
         render: () => 'Player died'

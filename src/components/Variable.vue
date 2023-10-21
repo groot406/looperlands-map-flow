@@ -22,7 +22,7 @@
     </template>
     <div class="flex flex-row gap-x-1" v-else>
       <template v-for="part in template">
-        <div v-if="part.type === 'text'">{{part.text}}</div>
+        <div v-if="part.type === 'text'">{{ getTagTypeOption(settings.tagType, part.text)}}</div>
         <div v-if="part.type === 'tag'" class="text-white px-1.5 rounded-full" :class="{
           'bg-slate-400 hover:bg-slate-500' : !tags[part.tag],
           'bg-green-500 hover:bg-green-500' : (tags[part.tag] && !tags[part.tag].error),
@@ -38,7 +38,7 @@
           <input v-if="!settings.tagType && settings.type !== 'coordinate'" v-model="input" @input="handelInput"
                  :placeholder="name"
                  class="font-normal ring-1 outline-0 ring-blue-300 focus:ring-blue-600 bg-white text-xs text-slate-800 border-1 w-full border-slate-600 rounded p-1 px-2">
-          <div class="flex flex-row" v-if="settings.type === 'coordinate'"><input v-model="input" @input="handelInput"  placeholder="x,y"/></div>
+          <div class="flex flex-row" v-if="settings.type === 'coordinate'"><input class="font-normal ring-1 outline-0 ring-blue-300 focus:ring-blue-600 bg-white text-xs text-slate-800 border-1 w-full border-slate-600 rounded p-1 px-2" v-model="input" @input="handelInput"  placeholder="x,y"/></div>
           <n-popover v-if="settings.type !== 'tag'" trigger="click" placement="bottom">
             <template #trigger>
               <Icon size="16" class="absolute right-5 top-5 cursor-pointer">
@@ -51,16 +51,8 @@
               </template>
             </div>
           </n-popover>
-          <select v-if="settings.tagType" v-model="input" @change="handleSelect"
-                  class="w-full border font-light text-xs p-1">
-            <option disabled value="">- select a tag -</option>
-            <template v-for="tag in tags">
-              <option v-if="(tag.type === settings.tagType) || (settings.tagType === 'mixed')" :value="'tag:' + tag.tag">
-                Tag: {{ tag.tag }}
-              </option>
-            </template>
-            <option v-for="tagTypeOption in getTagTypeOptions(settings.tagType)" :value="tagTypeOption">{{tagTypeOption}}</option>
-          </select>
+
+          <n-select  :clearable="true" :tag="true" v-if="settings.tagType" :filterable="true" :options="formatOptions(settings.tagType)" v-model:value="input" @change="handleSelect" />
           <div class="absolute triangle -top-2 bg-slate-50 w-4 h-4 rotate-45"></div>
         </div>
       </div>
@@ -68,7 +60,7 @@
   </template>
 </template>
 <script setup>
-import {computed, nextTick, ref, inject} from 'vue'
+import {computed, nextTick, ref, inject, toRaw} from 'vue'
 import {onClickOutside} from '@vueuse/core'
 import {IosPricetag} from "@vicons/ionicons4"
 import {NPopover} from 'naive-ui'
@@ -123,8 +115,8 @@ function handelInput() {
   emit('update:modelValue', input.value);
 }
 
-function handleSelect(event) {
-  emit('update:modelValue', input.value);
+function handleSelect(newValue) {
+  emit('update:modelValue', newValue);
   nextTick(close);
 }
 
@@ -182,40 +174,65 @@ const mobs = inject('mobs');
 const npcs = inject('npcs');
 const items = inject('items');
 const quests = inject('quests');
-const areas = inject('areas');
 const triggers = inject('triggers');
 const music = inject('music');
 const sounds = inject('sounds');
 const layers = inject('layers');
-const doors = inject('doors');
 const animations = inject('animations');
+const areas = inject('areas');
 
 function getTagTypeOptions(tagType) {
-  console.log(mobs)
   switch (tagType) {
     case 'mob':
-      return mobs
+      return mobs.value
     case 'npc':
-      return npcs
+      return npcs.value;
     case 'item':
-      return items
+      return items.value
     case 'quest':
-      return quests
-    case 'area':
-      return areas
+      return quests.value
     case 'trigger':
-      return triggers
+      return triggers.value
     case 'music':
-      return music
+      return music.value
     case 'sound':
-      return sounds
+      return sounds.value
     case 'layer':
-      return layers
-    case 'door':
-      return doors
+      return layers.value
+    case 'area':
+      return areas.value
     case 'animation':
       return animations
   }
+}
+
+function getTagTypeOption(type, value) {
+  let values = getTagTypeOptions(type);
+  if (!values) {
+    return value;
+  }
+  return values[value] || values[parseInt(value)] || value;
+}
+
+function formatOptions(tagType) {
+  let options = [];
+
+  for (let tag in props.tags) {
+    if (props.tags[tag].type === tagType || tagType === 'mixed') {
+      options.push({label: 'Tag: ' + props.tags[tag].tag, value: 'tag:' + props.tags[tag].tag})
+    }
+  }
+
+  let values = getTagTypeOptions(tagType);
+  if (!values) {
+    return options;
+  }
+
+  for (let value in values) {
+    options.push({label: values[value], value: value})
+  }
+
+  return options;
 }
 </script>
 <style lang="scss">
