@@ -169,6 +169,9 @@
               :src="getMapTokenImage(mapToken)"/></div>
         </div>
       </n-form-item>
+      <n-form-item label="Looperlands GIT Repository/Branch URL">
+        <n-input v-model:value="gitBaseUri"  placeholder="https://raw.githubusercontent.com/looperlands/looperlands/main/"  />
+      </n-form-item>
       <n-form-item label="Looperlands Map (linked to the token)">
         <n-select v-model:value="mapName" :options="mapOptions" :disabled="!selectedMap"
                   placeholder="Select the connected map"/>
@@ -221,7 +224,7 @@ const selectedBlocks = ref([]);
 const testMode = ref(false);
 const testStartBlock = ref(null);
 const activatedBlocks = ref({'all': [], 'out': [], 'true': [], 'false': [], 'error': []})
-
+const gitBaseUri = ref('https://raw.githubusercontent.com/looperlands/looperlands/main/');
 const maps = ref([]);
 const selectedMap = ref(null);
 const mapName = ref(null);
@@ -294,6 +297,12 @@ onMounted(loadMaps);
 
 window.addEventListener('mouseup', handleMouseUp, false);
 window.addEventListener('mouseup', stopDragSelect, false);
+
+watch(gitBaseUri, () => {
+  loadMaps();
+  sync();
+  loadMapDetails();
+})
 
 const showSetupModal = ref(false);
 const isSyncing = ref(false);
@@ -937,7 +946,7 @@ function sync() {
 }
 
 function processGameTypes() {
-  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/map-flow-poc/shared/js/gametypes.js')
+  axios.get(gitBaseUri.value + 'shared/js/gametypes.js')
       .then((response) => {
         let gameTypes = response.data;
         let Types;
@@ -962,7 +971,7 @@ function processGameTypes() {
 }
 
 function loadMaps() {
-  axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/server/config.json').then((response) => {
+  axios.get(gitBaseUri.value + 'server/config.json').then((response) => {
     maps.value = response.data.maps;
   });
 }
@@ -1002,7 +1011,7 @@ function loadMapDetails() {
         blocks.value = allBlocks[activeTab.value] ?? {};
         lines.value = allLines[activeTab.value] ?? [];
 
-        axios.get('https://raw.githubusercontent.com/looperlands/looperlands/map-flow-poc/server/maps/world_server_' + mapName.value + '.json').then((response) => {
+        axios.get(gitBaseUri.value + 'server/maps/world_server_' + mapName.value + '.json').then((response) => {
           let mapDetails = response.data;
           delete mapDetails.collisions
 
@@ -1033,7 +1042,7 @@ function loadMapDetails() {
           }
         })
 
-        axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/server/js/quests/' + mapName.value + '.js').then((response) => {
+        axios.get(gitBaseUri.value + 'server/js/quests/' + mapName.value + '.js').then((response) => {
           //let mapQuests = JSON.parse(response.data;
           var result = '[' + response.data.match(/(?<=\[\s+).*?(?=\s+\])/gs) + ']';
           const Types = {Entities: {}, Medals: {}};
@@ -1046,7 +1055,7 @@ function loadMapDetails() {
           }
         })
 
-        axios.get('https://raw.githubusercontent.com/looperlands/looperlands/main/client/js/audio.js').then((response) => {
+        axios.get(gitBaseUri.value + 'client/js/audio.js').then((response) => {
           let audio = response.data;
           let musicNames = audio.match(/musicNames.*?\[.*?\].*?/gs);
           eval(musicNames[0]);
