@@ -166,7 +166,7 @@
                class="hover:opacity-100 cursor-pointer overflow-hidden shadow-inner rounded-lg"
                :class="{'opacity-60': mapToken !== selectedMap, 'shadow-lg': mapToken === selectedMap }"
                @click="selectMap(mapToken)"><img
-              :src="'https://loopworms.io/DEV/LooperLands/Maps/img/' + mapToken + '.png'"/></div>
+              :src="getMapTokenImage(mapToken)"/></div>
         </div>
       </n-form-item>
       <n-form-item label="Looperlands Map (linked to the token)">
@@ -240,7 +240,7 @@ let animations = ['walk_left', 'walk_right', 'walk_up', 'walk_down', 'idle_left'
 const notification = useNotification();
 
 const mapFlowLoaded = ref(false);
-
+const mapTokenImages = ref({});
 const subTags = {
   player: {
     name: 'string',
@@ -1070,6 +1070,26 @@ watch(mapName, (value, oldValue) => {
     sync();
   }
 })
+//
+watch(mapTokens, () => {
+  // Get collection items
+  axios.get('https://api3.loopring.io/api/v3/nft/public/collection/items?id=9360&metadata=1&limit=999')
+      .then((response) => {
+        let items = response.data.nftTokenInfos;
+        for (let i in items) {
+          let item = items[i];
+
+          if (!mapTokens.value.includes(item.nftId)) {
+            continue;
+          }
+          mapTokenImages.value[item.nftId] = item.metadata.imageSize['240-240'];
+        }
+      })
+})
+
+function getMapTokenImage(mapToken) {
+  return mapTokenImages.value[mapToken] ?? 'https://loopworms.io/DEV/LooperLands/Maps/img/' + mapToken + '.png'
+}
 
 provide('isCreatingNewLine', isCreatingNewLine)
 provide('snappedBlock', snappedBlock)
@@ -1080,4 +1100,5 @@ provide('testMode', testMode);
 provide('testStartBlock', testStartBlock);
 provide('activatedBlocks', activatedBlocks);
 provide('testIsFinished', testIsFinished)
+
 </script>
