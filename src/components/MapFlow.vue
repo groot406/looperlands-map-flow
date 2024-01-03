@@ -864,7 +864,7 @@ watch(activeTab, () => {
 function publishJson() {
 
   const json = {handlers: [], blocks: toRaw(allBlocks), lines: toRaw(allLines), tabs: toRaw(tabs.value) };
-  console.log(json);
+
   _.forEach(allBlocks, (tabBlocks) => {
     _.forEach(tabBlocks, (block, idx) => {
       if (block.group != 'when') {
@@ -912,8 +912,6 @@ function getOutputs(block, idx) {
           outputType = 'then';
         }
 
-        // console.log(line);
-
         if (!outputs[outputType]) {
           outputs[outputType] = [];
         }
@@ -948,24 +946,29 @@ function sync() {
 function processGameTypes() {
   axios.get(gitBaseUri.value + 'shared/js/gametypes.js')
       .then((response) => {
-        let gameTypes = response.data;
-        let Types;
-        eval(gameTypes);
-        // loop over Types.Entities
-        npcs.value = {};
-        for (let i in Types.Entities) {
-          let entity = Types.Entities[i];
-          if (Types.isNpc(entity)) {
-            npcs.value[entity] = i;
+        if (response.data) {
+          let gameTypes = response.data;
+
+          let Types;
+          try {
+            eval(gameTypes);
+          } catch (error) {
           }
-          if (Types.isMob(entity)) {
-            mobs.value[entity] = i;
-          }
-          if (Types.isObject(entity)) {
-            items.value[entity] = i;
+          // loop over Types.Entities
+          npcs.value = {};
+          for (let i in Types.Entities) {
+            let entity = Types.Entities[i];
+            if (Types.isNpc(entity)) {
+              npcs.value[entity] = i;
+            }
+            if (Types.isMob(entity)) {
+              mobs.value[entity] = i;
+            }
+            if (Types.isObject(entity)) {
+              items.value[entity] = i;
+            }
           }
         }
-
         isSyncing.value = false;
       })
 }
@@ -994,14 +997,19 @@ function saveConfig() {
 }
 
 function loadMapDetails() {
-  axios.get('https://loopworms.io/DEV/LooperLands/Maps/selectLooperLands_Quest.php?NFTID=' + selectedMap.value)
+  axios.get('https://loopworms.io/DEV/LooperLands/Maps/selectLooperLands_Quest2.php?map=' + mapName.value)
       .then((response) => {
         let data = null;
+
         try {
           data = JSON.parse(response.data);
+          if(!data.blocks || !data.lines || !data.tabs) {
+            data = {handlers: [], blocks: [], lines: [], tabs: [] };
+          }
         } catch (e) {
-          data = { blocks: [], lines: [], tabs: [] };
+          data = {handlers: [], blocks: [], lines: [], tabs: [] };
         }
+
         Object.assign(allBlocks, data.blocks);
         Object.assign(allLines, data.lines);
 
