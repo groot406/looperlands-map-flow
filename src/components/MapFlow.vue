@@ -987,12 +987,15 @@ function saveConfig() {
 function loadMapDetails() {
   axios.get('https://loopworms.io/DEV/LooperLands/Maps/selectLooperLands_Quest.php?NFTID=' + selectedMap.value)
       .then((response) => {
-
-        let data = JSON.parse(response.data);
+        let data = null;
+        try {
+          data = JSON.parse(response.data);
+        } catch (e) {
+          data = { blocks: [], lines: [], tabs: [] };
+        }
         Object.assign(allBlocks, data.blocks);
         Object.assign(allLines, data.lines);
 
-        console.log(data.tabs);
         tabs.value = data.tabs;
         activeTab.value = tabs.value[0];
 
